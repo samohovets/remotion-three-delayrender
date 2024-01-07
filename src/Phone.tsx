@@ -1,6 +1,17 @@
 import {useThree} from '@react-three/fiber';
-import React, {useEffect, useMemo} from 'react';
-import {interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import {
+	Internals,
+	Loop,
+	cancelRender,
+	continueRender,
+	delayRender,
+	getRemotionEnvironment,
+	interpolate,
+	spring,
+	useCurrentFrame,
+	useVideoConfig,
+} from 'remotion';
 import {VideoTexture} from 'three';
 import {
 	CAMERA_DISTANCE,
@@ -10,15 +21,59 @@ import {
 } from './helpers/layout';
 import {roundedRect} from './helpers/rounded-rectangle';
 import {RoundedBox} from './RoundedBox';
+import {useOffthreadVideoTexture, useVideoTexture} from '@remotion/three';
+import {NoReactInternals} from 'remotion/no-react';
+import {useVideoRef} from './hooks/use-video-texture';
+import {getVideoMetadata} from '@remotion/media-utils';
+
+function useIsomorphVideoTexture({
+	src,
+	playbackRate = 1,
+}: {
+	src: string;
+	playbackRate?: number;
+}) {
+	const {isRendering} = getRemotionEnvironment();
+
+	const frame = useCurrentFrame();
+	const {fps} = useVideoConfig();
+	const mediaStartsAt = Internals.useMediaStartsAt();
+
+	const currentTime = useMemo(() => {
+		return (
+			NoReactInternals.getExpectedMediaFrameUncorrected({
+				frame,
+				playbackRate,
+				startFrom: -mediaStartsAt,
+			}) / fps
+		);
+	}, [frame, playbackRate, mediaStartsAt, fps]);
+
+	const {videoRef} = useVideoRef({src, currentTime});
+
+	if (isRendering) {
+		// eslint-disable-next-line react-hooks/rules-of-hooks
+		return useOffthreadVideoTexture({src, playbackRate});
+	}
+
+	// eslint-disable-next-line react-hooks/rules-of-hooks
+	return useVideoTexture(videoRef);
+}
 
 export const Phone: React.FC<{
-	videoTexture: VideoTexture | null;
+	videoSrc: string;
 	aspectRatio: number;
 	baseScale: number;
 	phoneColor: string;
-}> = ({aspectRatio, videoTexture, baseScale, phoneColor}) => {
+	position: number[];
+}> = ({aspectRatio, videoSrc, baseScale, phoneColor, position}) => {
 	const frame = useCurrentFrame();
 	const {fps, durationInFrames} = useVideoConfig();
+
+	const videoTexture = useIsomorphVideoTexture({
+		src: videoSrc,
+		playbackRate: 1,
+	});
 
 	const layout = useMemo(
 		() => getPhoneLayout(aspectRatio, baseScale),
@@ -90,7 +145,7 @@ export const Phone: React.FC<{
 		<group
 			scale={entranceAnimation}
 			rotation={[0, rotateY, 0]}
-			position={[0, translateY, 0]}
+			position={position}
 		>
 			<RoundedBox
 				radius={layout.phone.radius}
@@ -113,5 +168,40 @@ export const Phone: React.FC<{
 				) : null}
 			</mesh>
 		</group>
+	);
+};
+
+export const LoopedVideoPhone = (props: any) => {
+	const {fps} = useVideoConfig();
+
+	const [videoDuration, setVideoDuration] = useState<number | undefined>(5);
+
+	// TODO: everything below is commented out because I have no idea why continueRender is not working
+	// const [videoDurationHandle] = useState(() => delayRender('videoDuration'));
+
+	// const getVideoDuration = useCallback(async () => {
+	// 	try {
+	// 		const metadata = await getVideoMetadata(props.videoSrc);
+
+	// 		setVideoDuration(metadata.durationInSeconds);
+	// 		continueRender(videoDurationHandle);
+	// 	} catch (error) {
+	// 		console.error(error);
+	// 		cancelRender(error);
+	// 	}
+	// }, []);
+
+	// useEffect(() => {
+	// 	getVideoDuration();
+	// }, [getVideoDuration]);
+
+	if (!videoDuration) {
+		return null;
+	}
+
+	return (
+		<Loop layout="none" durationInFrames={Math.floor(fps * videoDuration)}>
+			<Phone {...props} />
+		</Loop>
 	);
 };

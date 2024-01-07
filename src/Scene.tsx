@@ -1,62 +1,103 @@
-import {staticFile} from 'remotion';
+import {Series, random, staticFile} from 'remotion';
 import {getVideoMetadata, VideoMetadata} from '@remotion/media-utils';
 import {ThreeCanvas, useVideoTexture} from '@remotion/three';
 import React, {useEffect, useRef, useState} from 'react';
 import {AbsoluteFill, useVideoConfig, Video} from 'remotion';
-import {Phone} from './Phone';
+import {LoopedVideoPhone, Phone} from './Phone';
 import {z} from 'zod';
 import {zColor} from '@remotion/zod-types';
+import {Bucket} from './Bucket';
+import {Environment} from '@react-three/drei';
 
 const container: React.CSSProperties = {
 	backgroundColor: 'white',
 };
 
-const videoStyle: React.CSSProperties = {
-	position: 'absolute',
-	opacity: 0,
-};
+const phoneVideo = staticFile('phone.mp4');
 
-export const myCompSchema = z.object({
-	phoneColor: zColor(),
-	deviceType: z.enum(['phone', 'tablet']),
-});
-
-type MyCompSchemaType = z.infer<typeof myCompSchema>;
-
-export const Scene: React.FC<
+const scenes = [
 	{
-		baseScale: number;
-	} & MyCompSchemaType
-> = ({baseScale, phoneColor, deviceType}) => {
-	const videoRef = useRef<HTMLVideoElement>(null);
+		objects: [
+			{
+				type: 'phone',
+				position: [2, 0, 0],
+				videoSrc: phoneVideo,
+			},
+			{
+				type: 'bucket',
+				position: [0, 0, -2],
+			},
+		],
+		durationInFrames: 400,
+	},
+	{
+		objects: [
+			{
+				type: 'phone',
+				position: [-0.3, 0, 0],
+				videoSrc: phoneVideo,
+			},
+			{
+				type: 'bucket',
+				position: [2, 0, -2],
+			},
+		],
+		durationInFrames: 300,
+	},
+	{
+		objects: [
+			{
+				type: 'phone',
+				position: [1, 0, 0],
+				videoSrc: phoneVideo,
+			},
+			{
+				type: 'bucket',
+				position: [-2, 1, -2],
+			},
+		],
+		durationInFrames: 300,
+	},
+];
+
+export const Scene: React.FC = () => {
 	const {width, height} = useVideoConfig();
-	const [videoData, setVideoData] = useState<VideoMetadata | null>(null);
 
-	const videoSrc =
-		deviceType === 'phone' ? staticFile('phone.mp4') : staticFile('tablet.mp4');
-
-	useEffect(() => {
-		getVideoMetadata(videoSrc)
-			.then((data) => setVideoData(data))
-			.catch((err) => console.log(err));
-	}, [videoSrc]);
-
-	const texture = useVideoTexture(videoRef);
 	return (
 		<AbsoluteFill style={container}>
-			<Video ref={videoRef} src={videoSrc} style={videoStyle} />
-			{videoData ? (
-				<ThreeCanvas linear width={width} height={height}>
-					<ambientLight intensity={1.5} color={0xffffff} />
-					<pointLight position={[10, 10, 0]} />
-					<Phone
-						phoneColor={phoneColor}
-						baseScale={baseScale}
-						videoTexture={texture}
-						aspectRatio={videoData.aspectRatio}
-					/>
-				</ThreeCanvas>
-			) : null}
+			<ThreeCanvas linear width={width} height={height}>
+				<Environment preset="lobby" />
+				<ambientLight intensity={1.5} color={0xffffff} />
+				<pointLight position={[10, 10, 0]} />
+				<Series>
+					{scenes.map((scene, sceneIndex) => (
+						<Series.Sequence
+							key={sceneIndex}
+							layout="none"
+							durationInFrames={scene.durationInFrames}
+						>
+							{scene.objects.map((obj, index) => {
+								if (obj.type === 'phone') {
+									return (
+										<LoopedVideoPhone
+											key={index}
+											phoneColor="black"
+											aspectRatio={9 / 16}
+											videoSrc={obj.videoSrc!}
+											baseScale={1}
+											position={obj.position}
+										/>
+									);
+								}
+								if (obj.type === 'bucket') {
+									return <Bucket key={index} position={obj.position} />;
+								}
+								return null;
+							})}
+						</Series.Sequence>
+					))}
+				</Series>
+			</ThreeCanvas>
 		</AbsoluteFill>
 	);
 };
