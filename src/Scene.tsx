@@ -1,4 +1,11 @@
-import {Series, random, staticFile, delayRender} from 'remotion';
+import {
+	Series,
+	random,
+	staticFile,
+	delayRender,
+	cancelRender,
+	continueRender,
+} from 'remotion';
 import {getVideoMetadata, VideoMetadata} from '@remotion/media-utils';
 import {ThreeCanvas, useVideoTexture} from '@remotion/three';
 import React, {useEffect, useRef, useState, useSyncExternalStore} from 'react';
@@ -8,6 +15,7 @@ import {z} from 'zod';
 import {zColor} from '@remotion/zod-types';
 import {Bucket} from './Bucket';
 import {Environment} from '@react-three/drei';
+import {GLTF, GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader';
 
 const container: React.CSSProperties = {
 	backgroundColor: 'white',
@@ -62,6 +70,24 @@ export const scenes = [
 
 export const Scene: React.FC = (props: any) => {
 	const {width, height} = useVideoConfig();
+	const [model, setModel] = useState<GLTF | null>(null);
+	const [handle] = useState(() => {
+		return delayRender('load gltf');
+	});
+
+	useEffect(() => {
+		const loader = new GLTFLoader();
+
+		loader
+			.loadAsync(staticFile('/3d-models/bucket.glb'))
+			.then((mod) => {
+				setModel(mod);
+				continueRender(handle);
+			})
+			.catch((err) => {
+				cancelRender(err);
+			});
+	}, [handle]);
 
 	return (
 		<AbsoluteFill style={container}>
@@ -91,7 +117,9 @@ export const Scene: React.FC = (props: any) => {
 									);
 								}
 								if (obj.type === 'bucket') {
-									return <Bucket key={index} position={obj.position} />;
+									return (
+										<Bucket key={index} model={model} position={obj.position} />
+									);
 								}
 								return null;
 							})}

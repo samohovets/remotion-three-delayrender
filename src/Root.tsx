@@ -1,7 +1,9 @@
+import {staticFile} from 'remotion';
 import {getVideoMetadata} from '@remotion/media-utils';
 import {Composition} from 'remotion';
 import {NoReactInternals} from 'remotion/no-react';
 import {Scene, scenes} from './Scene';
+import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader';
 
 // Welcome to the Remotion Three Starter Kit!
 // Two compositions have been created, showing how to use
