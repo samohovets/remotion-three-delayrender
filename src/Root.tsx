@@ -1,5 +1,9 @@
+import {staticFile} from 'remotion';
+import {getVideoMetadata} from '@remotion/media-utils';
 import {Composition} from 'remotion';
-import {Scene} from './Scene';
+import {NoReactInternals} from 'remotion/no-react';
+import {Scene, scenes} from './Scene';
+import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader';
 
 // Welcome to the Remotion Three Starter Kit!
 // Two compositions have been created, showing how to use
@@ -30,6 +34,28 @@ export const RemotionRoot: React.FC = () => {
 					deviceType: 'phone',
 					phoneColor: 'rgba(110, 152, 191, 0.00)' as const,
 					baseScale: 1,
+				}}
+				calculateMetadata={async ({props}) => {
+					const sources = scenes
+						.map((scene) => scene.objects.map((obj) => obj.videoSrc))
+						.flat(1)
+						.filter(NoReactInternals.truthy);
+
+					const durations = Object.fromEntries(
+						await Promise.all(
+							sources.map(async (source) => {
+								const {durationInSeconds} = await getVideoMetadata(source);
+								return [source, durationInSeconds] as const;
+							})
+						)
+					);
+
+					return {
+						props: {
+							...props,
+							durations,
+						},
+					};
 				}}
 			/>
 		</>

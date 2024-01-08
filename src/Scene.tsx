@@ -1,13 +1,21 @@
-import {Series, random, staticFile} from 'remotion';
+import {
+	Series,
+	random,
+	staticFile,
+	delayRender,
+	cancelRender,
+	continueRender,
+} from 'remotion';
 import {getVideoMetadata, VideoMetadata} from '@remotion/media-utils';
 import {ThreeCanvas, useVideoTexture} from '@remotion/three';
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useRef, useState, useSyncExternalStore} from 'react';
 import {AbsoluteFill, useVideoConfig, Video} from 'remotion';
 import {LoopedVideoPhone, Phone} from './Phone';
 import {z} from 'zod';
 import {zColor} from '@remotion/zod-types';
 import {Bucket} from './Bucket';
 import {Environment} from '@react-three/drei';
+import {GLTF, GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader';
 
 const container: React.CSSProperties = {
 	backgroundColor: 'white',
@@ -15,7 +23,7 @@ const container: React.CSSProperties = {
 
 const phoneVideo = staticFile('phone.mp4');
 
-const scenes = [
+export const scenes = [
 	{
 		objects: [
 			{
@@ -60,8 +68,26 @@ const scenes = [
 	},
 ];
 
-export const Scene: React.FC = () => {
+export const Scene: React.FC = (props: any) => {
 	const {width, height} = useVideoConfig();
+	const [model, setModel] = useState<GLTF | null>(null);
+	const [handle] = useState(() => {
+		return delayRender('load gltf');
+	});
+
+	useEffect(() => {
+		const loader = new GLTFLoader();
+
+		loader
+			.loadAsync(staticFile('/3d-models/bucket.glb'))
+			.then((mod) => {
+				setModel(mod);
+				continueRender(handle);
+			})
+			.catch((err) => {
+				cancelRender(err);
+			});
+	}, [handle]);
 
 	return (
 		<AbsoluteFill style={container}>
@@ -85,12 +111,15 @@ export const Scene: React.FC = () => {
 											aspectRatio={9 / 16}
 											videoSrc={obj.videoSrc!}
 											baseScale={1}
+											videoDuration={props.durations[obj.videoSrc!]}
 											position={obj.position}
 										/>
 									);
 								}
 								if (obj.type === 'bucket') {
-									return <Bucket key={index} position={obj.position} />;
+									return (
+										<Bucket key={index} model={model} position={obj.position} />
+									);
 								}
 								return null;
 							})}
