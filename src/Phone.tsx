@@ -173,34 +173,11 @@ export const Phone: React.FC<{
 
 export const LoopedVideoPhone = (props: any) => {
 	const {fps} = useVideoConfig();
-
-	const [videoDuration, setVideoDuration] = useState<number | undefined>(5);
-
-	// TODO: everything below is commented out because I have no idea why continueRender is not working
-	// const [videoDurationHandle] = useState(() => delayRender('videoDuration'));
-
-	// const getVideoDuration = useCallback(async () => {
-	// 	try {
-	// 		const metadata = await getVideoMetadata(props.videoSrc);
-
-	// 		setVideoDuration(metadata.durationInSeconds);
-	// 		continueRender(videoDurationHandle);
-	// 	} catch (error) {
-	// 		console.error(error);
-	// 		cancelRender(error);
-	// 	}
-	// }, []);
-
-	// useEffect(() => {
-	// 	getVideoDuration();
-	// }, [getVideoDuration]);
-
-	if (!videoDuration) {
-		return null;
-	}
-
 	return (
-		<Loop layout="none" durationInFrames={Math.floor(fps * videoDuration)}>
+		<Loop
+			layout="none"
+			durationInFrames={Math.floor(fps * props.videoDuration)}
+		>
 			<Phone {...props} />
 		</Loop>
 	);

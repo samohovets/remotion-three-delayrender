@@ -1,7 +1,7 @@
-import {Series, random, staticFile} from 'remotion';
+import {Series, random, staticFile, delayRender} from 'remotion';
 import {getVideoMetadata, VideoMetadata} from '@remotion/media-utils';
 import {ThreeCanvas, useVideoTexture} from '@remotion/three';
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useRef, useState, useSyncExternalStore} from 'react';
 import {AbsoluteFill, useVideoConfig, Video} from 'remotion';
 import {LoopedVideoPhone, Phone} from './Phone';
 import {z} from 'zod';
@@ -15,7 +15,7 @@ const container: React.CSSProperties = {
 
 const phoneVideo = staticFile('phone.mp4');
 
-const scenes = [
+export const scenes = [
 	{
 		objects: [
 			{
@@ -60,7 +60,7 @@ const scenes = [
 	},
 ];
 
-export const Scene: React.FC = () => {
+export const Scene: React.FC = (props: any) => {
 	const {width, height} = useVideoConfig();
 
 	return (
@@ -85,6 +85,7 @@ export const Scene: React.FC = () => {
 											aspectRatio={9 / 16}
 											videoSrc={obj.videoSrc!}
 											baseScale={1}
+											videoDuration={props.durations[obj.videoSrc!]}
 											position={obj.position}
 										/>
 									);
